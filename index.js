@@ -1,5 +1,6 @@
-const express = require('express')
-const app = express()
+const express = require("express");
+const app = express();
+const morgan = require("morgan");
 
 let persons = [
   {
@@ -24,68 +25,83 @@ let persons = [
   },
 ];
 
-app.use(express.json())
+app.use(express.json());
 
-app.get('/', (req, res) => {
-  res.send('<h1>Hello World!</h1>')
-})
+morgan.token("body", function (req, res) {
+  return JSON.stringify(req.body);
+});
 
-const generateId = () => {
-  const maxId = persons.length > 0
-    ? Math.max(...persons.map(n => n.id))
-    : 0
-  return maxId + 1
-}
+app.use(morgan("tiny"));
 
-app.post('/api/persons', (request, response) => {
-  const body = request.body
+app.get("/", (req, res) => {
+  res.send("<h1>Hello World!</h1>");
+});
+
+app.get("/info", (req, res) => {
+  const info = `<h1>Phonebook has info for ${persons.length} people</h1>
+    <h1>${new Date()}</h1>`;
+  res.send(info);
+});
+
+const generateId = (max) => {
+  return Math.floor(Math.random() * max);
+};
+
+app.post("/api/persons", morgan(":body"), (request, response) => {
+  const body = request.body;
 
   if (!body.name) {
-    return response.status(400).json({ 
-      error: 'name missing' 
-    })
+    return response.status(400).json({
+      error: "name missing",
+    });
+  }
+
+  if (persons.find((person) => person.name === body.name)) {
+    return response.status(400).json({
+      error: "name must be unique",
+    });
   }
 
   if (!body.number) {
-    return response.status(400).json({ 
-      error: 'number missing' 
-    })
+    return response.status(400).json({
+      error: "number missing",
+    });
   }
 
   const person = {
     name: body.name,
     number: body.number || false,
-    id: generateId(),
-  }
+    id: generateId(10000),
+  };
 
-  persons = persons.concat(person)
+  persons = persons.concat(person);
 
-  response.json(person)
-})
+  response.json(person);
+});
 
-app.get('/api/persons', (req, res) => {
-  res.json(persons)
-})
+app.get("/api/persons", (req, res) => {
+  res.json(persons);
+});
 
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  persons = persons.filter(person => person.id !== id)
+app.delete("/api/persons/:id", (request, response) => {
+  const id = Number(request.params.id);
+  persons = persons.filter((person) => person.id !== id);
 
-  response.status(204).end()
-})
+  response.status(204).end();
+});
 
-app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const person = persons.find(person => person.id === id)
+app.get("/api/persons/:id", (request, response) => {
+  const id = Number(request.params.id);
+  const person = persons.find((person) => person.id === id);
 
   if (person) {
-    response.json(person)
+    response.json(person);
   } else {
-    response.status(404).end()
+    response.status(404).end();
   }
-})
+});
 
-const PORT = 3001
+const PORT = 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+  console.log(`Server running on port ${PORT}`);
+});
