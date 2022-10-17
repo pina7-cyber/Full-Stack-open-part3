@@ -1,1 +1,1 @@
-https://shrouded-thicket-36140.herokuapp.com/api/persons
+https://shrouded-thicket-36140.herokuapp.com
