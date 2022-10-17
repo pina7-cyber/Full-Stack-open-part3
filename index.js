@@ -29,33 +29,36 @@ app.get("/info", (req, res) => {
   });
 });
 
-app.post("/api/persons", morgan(":body"), (request, response) => {
+app.post("/api/persons", morgan(":body"), (request, response, next) => {
   const body = request.body;
-  if (!body.name) {
-    return response.status(400).json({
-      error: "name missing",
-    });
-  } else if (!body.number) {
-    return response.status(400).json({
-      error: "number missing",
-    });
-  } else {
-    Person.find({ name: body.name }).then((twin) => {
-      if (twin[0]) {
-        return response.status(400).json({
-          error: "name must be unique",
-        });
-      } else {
-        const person = new Person({
-          name: body.name,
-          number: body.number || false,
-        });
-        person.save().then((savedPerson) => {
+  // if (!body.name) {
+  //   return response.status(400).json({
+  //     error: "name missing",
+  //   });
+  // } else if (!body.number) {
+  //   return response.status(400).json({
+  //     error: "number missing",
+  //   });
+  // } else {
+  Person.find({ name: body.name }).then((twin) => {
+    if (twin[0]) {
+      return response.status(400).json({
+        error: "name must be unique",
+      });
+    } else {
+      const person = new Person({
+        name: body.name,
+        number: body.number || false,
+        date: new Date(),
+      });
+      person
+        .save()
+        .then((savedPerson) => {
           response.json(savedPerson);
-        });
-      }
-    });
-  }
+        })
+        .catch((error) => next(error));
+    }
+  });
 });
 
 app.get("/api/persons", (request, response) => {
@@ -86,14 +89,14 @@ app.get("/api/persons/:id", (request, response) => {
 });
 
 app.put("/api/persons/:id", (request, response, next) => {
-  const body = request.body;
+  const { name, number } = request.body;
   console.log(request.body);
-  const person = {
-    name: body.name,
-    number: body.number,
-  };
 
-  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+  Person.findByIdAndUpdate(
+    request.params.id,
+    { name, number },
+    { new: true, runValidators: true, context: "query" }
+  )
     .then((updatedPerson) => {
       console.log(updatedPerson);
       response.json(updatedPerson);
@@ -110,10 +113,12 @@ app.use(unknownEndpoint);
 const errorHandler = (error, request, response, next) => {
   console.error(error.message);
 
-  if (error.name === 'CastError') {
-    return response.status(400).send({ error: 'malformatted id' })
-  } else if (error.name === 'ValidationError') {
-    return response.status(400).json({ error: error.message })
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: "malformatted id" });
+  } else if (error.name === "ValidationError") {
+    return response
+      .status(400)
+      .json({ error: error.message, name: error.name });
   }
 
   next(error);
